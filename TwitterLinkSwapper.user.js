@@ -10,32 +10,44 @@
 // @match        https://x.com/*
 // @icon         https://abs.twimg.com/favicons/twitter.2.ico
 // @license      BSD-3-Clause
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
   "use strict";
 
-  // Listener for copy events
   document.addEventListener("copy", (event) => {
-    let selectedText = event.target.innerText;
-    if (isValidTwitterUrl(selectedText)) {
-      replaceUrl(selectedText);
+    const copiedText = getCopiedText(event);
+    if (!isValidTwitterUrl(copiedText)) {
+      return;
     }
+
+    const swappedUrl = copiedText
+      .replace(/(twitter|x)\.com/, "fxtwitter.com")
+      .replace(/\?s=20$/, "");
+
+    if (event.clipboardData) {
+      event.clipboardData.setData("text/plain", swappedUrl);
+      event.preventDefault();
+      return;
+    }
+
+    navigator.clipboard.writeText(swappedUrl).catch((error) => {
+      console.error("Error replacing URL:", error);
+    });
   });
 
-  // Validate if the text is a valid Twitter URL
-  function isValidTwitterUrl(url) {
-    const urlRegex = /^https:\/\/(www\.)?(twitter|x)\.com\/.+\/status\/\d+/;
-    return urlRegex.test(url);
+  function getCopiedText(event) {
+    const selection = window.getSelection()?.toString().trim();
+    if (selection) {
+      return selection;
+    }
+
+    return event.clipboardData?.getData("text/plain").trim() || "";
   }
 
-  // Replace the domain part of the Twitter URL with 'fxtwitter'
-  function replaceUrl(originalUrl) {
-    try {
-      let newUrl = originalUrl.replace(/(twitter|x)\.com/, "fxtwitter.com");
-      navigator.clipboard.writeText(newUrl);
-    } catch (error) {
-      console.error("Error replacing URL:", error);
-    }
+  function isValidTwitterUrl(url) {
+    const urlRegex = /^https?:\/\/(www\.)?(twitter|x)\.com\/.+\/status\/\d+/;
+    return urlRegex.test(url);
   }
 })();
